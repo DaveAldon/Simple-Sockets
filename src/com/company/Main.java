@@ -1,73 +1,80 @@
 // David Crawford
 
 package com.company;
-
-import java.net.Socket;
 import java.io.*;
-import java.io.FileOutputStream;
+import java.net.URL;
+import java.net.HttpURLConnection;
+import java.util.*;
 
 public class Main {
 
     public static void main(String[] args) {
-        Socket socket = null;
-        String hostName = "localhost";
-        String filePath = "/";
-        int portNumber = 8000;
+        String url = "http://www.cis.gvsu.edu/~dulimarh/demo.html";
 
         try {
-            // Step 1: Create a socket that connects to the above host and port number
-            socket = new Socket(hostName, portNumber);
-            socket.setSoTimeout(10000);
-            System.out.println("Connected");
 
-            // Step 2: Create a PrintWriter from the socket's output stream
-            //         Use the autoFlush option
-            PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+            // Initial connection
 
-            // Step 3: Create a BufferedReader from the socket's input stream
-            BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            URL obj = new URL(url);
+            HttpURLConnection httpClient = (HttpURLConnection) obj.openConnection();
+            httpClient.setRequestMethod("GET");
+            int responseCode = httpClient.getResponseCode();
 
-            // Step 4: Send an HTTP GET request via the PrintWriter.
-            //         Remember to print the necessary blank line
-            out.println("GET " + filePath + " HTTP/1.0\r\n");
-            out.flush();
+            // Builds the response header section
 
-            // Step 6a: Create a FileOutputStream for storing the payload
-            // Step 6b: Wrap the FileOutputStream in another PrintWriter
-            String t;
-            try (PrintWriter payload = new PrintWriter(new FileOutputStream("crawford-payload.txt", true))) {
-            while((t = in.readLine()) != null) {
-                // Step 5a: Read the status line of the response
-                payload.println(t);
-                // Step 5b: Read the HTTP response via the BufferedReader until
-                //         you get a blank line
-                if (t.isEmpty()) {
-                    // Step 7: Read the rest of the input from BufferedReader and write
-                    //         it to the second PrintWriter.
-                    //         Hint: readLine() returns null when there is no more data
-                    //         to read
-                    try (PrintWriter response = new PrintWriter(new FileOutputStream("crawford-response.txt", true))) {
-                        while((t = in.readLine()) != null) {
-                            response.println(t);
-                        }
-                        response.close();
-                    } catch (FileNotFoundException e) {
-                        e.printStackTrace();
+            StringBuilder builder = new StringBuilder();
+            builder.append(responseCode)
+                    .append(" ")
+                    .append(httpClient.getResponseMessage())
+                    .append("\n");
+
+            Map<String, List<String>> map = httpClient.getHeaderFields();
+            for (Map.Entry<String, List<String>> entry : map.entrySet()) {
+                if (entry.getKey() == null)
+                    continue;
+                builder.append(entry.getKey())
+                        .append(": ");
+
+                List<String> headerValues = entry.getValue();
+                Iterator<String> it = headerValues.iterator();
+                if (it.hasNext()) {
+                    builder.append(it.next());
+
+                    while (it.hasNext()) {
+                        builder.append(", ")
+                                .append(it.next());
                     }
                 }
+                builder.append("\n");
             }
 
-            // Step 8: Remember to close the writer
-            payload.close();
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
+            // Builds the content section
+
+            String result = "";
+            if(responseCode == 200) {
+                InputStream in = new BufferedInputStream(httpClient.getInputStream());
+                if (in != null) {
+                    BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(in));
+                    String line = "";
+                    while ((line = bufferedReader.readLine()) != null)
+                        result += (line + "\n");
+                }
+                in.close();
+            }
+            else if(String.valueOf(responseCode).startsWith("4")) {
+                result = "Resource not found";
             }
 
-            out.close();
-            in.close();
+            // Output
+
+            System.out.println("Headers:\n");
+            System.out.println(builder);
+            System.out.println("Result:\n");
+            System.out.println(result);
+
         }
         catch (Exception e) {
-            System.out.print(e);
+            System.out.println(e);
         }
     }
 }
