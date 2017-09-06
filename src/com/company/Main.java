@@ -69,9 +69,24 @@ public class Main {
 
             System.out.println("Headers:\n");
             System.out.println(builder);
-            System.out.println("Result:\n");
-            System.out.println(result);
+            //System.out.println("Result:\n");
+            //System.out.println(result);
 
+            /*try (PrintWriter payload = new PrintWriter(new FileOutputStream("payload.txt", true))) {
+                payload.println(builder);
+                payload.close();
+            }
+            catch (Exception e) {
+                System.out.println(e);
+            }
+            */
+            try (PrintWriter payload = new PrintWriter(new FileOutputStream("response.txt", true))) {
+                payload.println(result);
+                payload.close();
+            }
+            catch (Exception e) {
+                System.out.println(e);
+            }
         }
         catch (Exception e) {
             System.out.println(e);
